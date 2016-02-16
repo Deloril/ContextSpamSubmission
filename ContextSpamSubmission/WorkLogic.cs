@@ -42,7 +42,7 @@ namespace ContextSpamSubmission
         {
 
 
-            Microsoft.Office.Interop.Outlook.Application outlookApp = new Microsoft.Office.Interop.Outlook.Application();
+            Microsoft.Office.Interop.Outlook.Application outlookApp = Globals.ThisAddIn.Application;
             //submission zip password
 
             //Main logic, majority of program logic is below, in this method.
@@ -85,23 +85,23 @@ namespace ContextSpamSubmission
                         ticketMail.Body = metadata;
                         ticketMail.Send();
 
-                        MemoryStream ms = new MemoryStream();
-                        using (ZipArchive zipper = new ZipArchive(ms))
-                        {
+                        //MemoryStream ms = new MemoryStream();
+                        //using (ZipArchive zipper = new ZipArchive(ms))
+                        //{
 
-                        }
+                        //}
 
-                        
+
                         //Attachment badAttach = new System.Net.Mail.Attachment(badMail, System.Net.Mime.MediaTypeNames.Application.Octet);
 
 
                         //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
-                        Microsoft.Office.Interop.Outlook.MailItem spamMail = (Microsoft.Office.Interop.Outlook.MailItem)outlookApp.CreateItem(Microsoft.Office.Interop.Outlook.OlItemType.olMailItem);
+                        MailItem spamMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
                         spamMail.To = spamSubmitAddress;
                         spamMail.Subject = uid;
                         spamMail.Body = metadata;
                         //spamMail.a
-                        spamMail.Send();
+                        //spamMail.Send();
 
                         //testing message, can likely remove this later. XXX
                         if (debug)
