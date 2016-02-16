@@ -2,6 +2,8 @@
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -83,6 +85,14 @@ namespace ContextSpamSubmission
                         ticketMail.Body = metadata;
                         ticketMail.Send();
 
+                        MemoryStream ms = new MemoryStream();
+                        using (ZipArchive zipper = new ZipArchive(ms))
+                        {
+
+                        }
+
+                        
+                        //Attachment badAttach = new System.Net.Mail.Attachment(badMail, System.Net.Mime.MediaTypeNames.Application.Octet);
 
 
                         //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
