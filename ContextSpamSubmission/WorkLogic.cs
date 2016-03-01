@@ -1,4 +1,5 @@
-﻿using Microsoft.Office.Interop.Outlook;
+﻿using Ionic.Zip;
+using Microsoft.Office.Interop.Outlook;
 using Microsoft.Win32;
 using System;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ namespace ContextSpamSubmission
 {
     class WorkLogic
     {
+        const string PR_ATTACH_DATA_BIN = "http://schemas.microsoft.com/mapi/proptag/0x37010102";
         //variable declarations XXX
         //the registry hive containing our address keys.
         string regPath = "HKEY_CURRENT_USER\\SOFTWARE\\ElementalSoftware\\SpamSubmission\\";
@@ -60,10 +62,15 @@ namespace ContextSpamSubmission
                         //set the uid of this message
                         //after much deliberation, we'll initialize rand here,
                         //as it gives us the greatest chance of a non duplicated random number
-                        Random rand = new Random();
-                        uid = rand.Next(100000000, 999999999).ToString();
-                        uid += rand.Next(100000000, 999999999).ToString();
-                        uid += rand.Next(100000000, 999999999).ToString();
+                        string uid = Guid.NewGuid().ToString();
+                        string strHeaders = "";
+                        PropertyAccessor oPA = badMail.PropertyAccessor as PropertyAccessor;
+                        const string PR_MAIL_HEADER_TAG = @"http://schemas.microsoft.com/mapi/proptag/0x007D001E";
+                        try
+                        {
+                            strHeaders = (string)oPA.GetProperty(PR_MAIL_HEADER_TAG);
+                        }
+                        catch { }
 
                         //This will pull out the headers and such, and whack them into variables.
                         metadata = "To: " +  badMail.To + "\r\n";
@@ -76,6 +83,7 @@ namespace ContextSpamSubmission
                         metadata += "Received Time: " + badMail.ReceivedTime + "\r\n";
                         metadata += "Sent On: " + badMail.SentOn.ToString() + "\r\n";
                         metadata += "Size (kb): " + ((badMail.Size)/1024).ToString() + "\r\n";
+                        metadata += "Headers: \r\n" + strHeaders + "\r\n";
                         metadata += "Plaintext Body: \r\n" + badMail.Body + "\r\n";
 
                         //This will create a mail item, and send it to the designated mailbox of a ticketing system.
@@ -83,37 +91,69 @@ namespace ContextSpamSubmission
                         ticketMail.To = emailTicketAddress;
                         ticketMail.Subject = uid;
                         ticketMail.Body = metadata;
-                        ticketMail.Send();
-
-                        //MemoryStream ms = new MemoryStream();
-                        //using (ZipArchive zipper = new ZipArchive(ms))
-                        //{
-
-                        //}
+                        //ticketMail.Send();
 
 
-                        //Attachment badAttach = new System.Net.Mail.Attachment(badMail, System.Net.Mime.MediaTypeNames.Application.Octet);
+                        //Save the badmail to disk, to then read back in in a compressed stream.
+                        
+                        //First, get temp path(checks the below in order):
+                        //The path specified by the TMP environment variable.
+                        //The path specified by the TEMP environment variable.
+                        //The path specified by the USERPROFILE environment variable.
+                        //The Windows directory.
+                        string tempDir = Path.GetTempPath();
+                        string badOnDisk = tempDir + uid + ".msg";
+                        string badZipOnDisk = tempDir + uid + ".zip";
 
+                        //Save it to disk
+                        badMail.SaveAs(badOnDisk);
+
+                        //Read in the email in the .zip format, with a password, write back to disk.
+                        using (ZipFile zip = new ZipFile())
+                        {
+                            zip.Password = encryptionPassword;
+                            //the "." specifies the directory structure inside the zip - . just means
+                            //insert the attachment at the root, instead of nested in a replication of
+                            //the systems %TMP% dir
+                            zip.AddFile(badOnDisk, ".");
+                            zip.Save(badZipOnDisk);
+                        }
+
+                        //Better get rid of the raw BadMail as soon as we're done with it
+
+                        File.Delete(badOnDisk);
 
                         //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
                         MailItem spamMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
                         spamMail.To = spamSubmitAddress;
                         spamMail.Subject = uid;
                         spamMail.Body = metadata;
-                        //spamMail.a
-                        //spamMail.Send();
+                        spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + uid);
+                        spamMail.Send();
+
+                        //That's sent, let's delete the .zip on disk
+                        File.Delete(badZipOnDisk);
+
+                        //Finally, remove the dodgy email from outlook.
+                        badMail.UnRead = false;
+                        badMail.Save();
+                        badMail.Delete();
+                        
+                        
 
                         //testing message, can likely remove this later. XXX
                         if (debug)
                         {
-                            MessageBox.Show("You've submitted something you think is SPAM!\r\n" +
-                        metadata, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            MessageBox.Show("You've submitted a SPAM sample.\r\n" +
+                                metadata, "Thanks", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
                     //Not a mail item, need to decide how to handle this. Advise user they done goofed. XXX
                     else
                     {
-                        MessageBox.Show("Not an email!", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        MessageBox.Show("You've selected something that is not an email.\r\n" + 
+                            "Please ensure you right click the email you want to submit, and try again.\r\n\r\n" +
+                            "If the issue persists, please contact the service centre for assistance.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     }
 
                 }
