@@ -17,7 +17,7 @@ namespace ContextSpamSubmission
         const string PR_ATTACH_DATA_BIN = "http://schemas.microsoft.com/mapi/proptag/0x37010102";
         //variable declarations XXX
         //the registry hive containing our address keys.
-        string regPath = "HKEY_CURRENT_USER\\SOFTWARE\\ElementalSoftware\\SpamSubmission\\";
+        string regPath = "HKEY_CURRENT_USER\\SOFTWARE\\InverseSoftware\\SpamSubmission\\";
         //the key containing the ticket 'voicemail' address. Emailing this address should result in
         //a ticket being created, with a reference to the SPAM sample.
         string regTicketAddress = "ticketEmail";
@@ -38,12 +38,18 @@ namespace ContextSpamSubmission
         //A string to hold the unique identifier of each message
         string uid = "";
         //boolean value (stored in reg) dictating wether or not we should show debugging messages
-        bool debug;
+        bool debug = false;
+        //an Outlook Rules Array to store all the current outlook rules.
+        Rules olRuleList = null;
+        //Single Rule instance
+        Rule olRule = null;
+        //A string for the rule name we will use. Registry?
+        string olRuleName = "SPAMAutoDeleteList";
+
+        
         
         public void submit()
         {
-
-
             Microsoft.Office.Interop.Outlook.Application outlookApp = Globals.ThisAddIn.Application;
             //submission zip password
 
@@ -134,12 +140,68 @@ namespace ContextSpamSubmission
                         //That's sent, let's delete the .zip on disk
                         File.Delete(badZipOnDisk);
 
+
+
+                        //Now, let's add the sender to the autodelete rule
+                        olRuleList = Globals.ThisAddIn.Application.Session.DefaultStore.GetRules();
+
+                        bool ruleExists = false;
+                        foreach (Rule rule in olRuleList)
+                        {
+                            if (rule.Name.Equals(olRuleName))
+                            {
+                                olRule = rule;
+                                ruleExists = true;
+                                break;
+                            }
+                        }
+
+                        //if the rule doesn't exist, we create it. 
+                        if (!ruleExists)
+                        {
+                            olRule = olRuleList.Create(olRuleName, OlRuleType.olRuleReceive);
+                            olRule.Conditions.SenderAddress.Address = new string[] { "placeholder@ignoreme1337.ru" };
+                        }
+                        //then we check to see if the sender is in the bad list. If he's not,
+                        //we add him.
+                        bool inList = false;
+                        foreach (string s in olRule.Conditions.SenderAddress.Address)
+                        {
+                            if (s.Equals(badMail.SenderEmailAddress)){
+                                inList = true;
+                                break;
+                            }
+                        }
+                        if (!inList)
+                        {
+                            List<string> badAddressList = new List<string>();
+                            foreach (string s in olRule.Conditions.SenderAddress.Address)
+                            {
+                                badAddressList.Add(s);
+
+                            }
+                            badAddressList.Add(badMail.SenderEmailAddress);
+                            string[] badStrings = new string[badAddressList.Count];
+                            int i = 0;
+                            foreach (string s in badAddressList)
+                            {
+                                badStrings[i] = s;
+                                i++;
+                            }
+                            foreach(string s in badStrings)
+                            {
+                                MessageBox.Show(s);
+                            }
+                            olRule.Conditions.SenderAddress.Address = badStrings;
+                            olRule.Conditions.SenderAddress.Enabled = true;
+                        }
+                        olRule.Actions.DeletePermanently.Enabled = true;
+                        olRuleList.Save(true);
+
                         //Finally, remove the dodgy email from outlook.
                         badMail.UnRead = false;
                         badMail.Save();
                         badMail.Delete();
-                        
-                        
 
                         //testing message, can likely remove this later. XXX
                         if (debug)
