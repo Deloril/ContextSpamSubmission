@@ -18,14 +18,14 @@ namespace ContextSpamSubmission
         const string PR_ATTACH_DATA_BIN = @"http://schemas.microsoft.com/mapi/proptag/0x37010102";
         //variable declarations XXX
         //the registry hive containing our address keys.
-        string sRegPath = "HKEY_CURRENT_USER\\SOFTWARE\\InverseSoftware\\SpamSubmission\\";
+        string sRegPath = "HKEY_LOCAL_MACHINE\\SOFTWARE\\InverseSoftware\\SpamSubmission\\";
         //the key containing the ticket 'voicemail' address. Emailing this address should result in
         //a ticket being created, with a reference to the SPAM sample.
         string sRegTicketAddress = "ticketEmail";
         //the key containing the address we submit the SPAM sample to.
         string sRegSubmitAddress = "spamEmail";
         //key that holds the zip password
-        string sRegEncryptionPassword = "encryptionPassword";
+        string sRegEncryptionPassword = "encp";
         //string to store the registry key holding the Debug value
         string sRegDebug = "debug";
         //key to hold the ticket voicemail address, once we get it.
@@ -43,11 +43,9 @@ namespace ContextSpamSubmission
         //Single Rule instance
         Rule olRule = null;
         //A string for the rule name we will use. Registry?
-        string olRuleName = "SPAMAutoDeleteList";
+        string olRuleName = "SPAM Auto Delete List";
         //Boolean value for existence of SPAM Rule in outlook
         bool bSpamRuleExists = false;
-
-        
         
         public void submit()
         {
@@ -101,9 +99,10 @@ namespace ContextSpamSubmission
                         ticketMail.Body = sMetadata;
                         ticketMail.Send();
 
+                        /*
+                        *   Save the badmail to disk, to then read back in in a compressed stream.
+                        */
 
-                        //Save the badmail to disk, to then read back in in a compressed stream.
-                        
                         //First, get temp path(checks the below in order):
                         //The path specified by the TMP environment variable.
                         //The path specified by the TEMP environment variable.
@@ -180,33 +179,37 @@ namespace ContextSpamSubmission
         public bool initialize()
         {
             //bDebug string for testing
-            string debugMessage= "";
+            string sDebugMessage= "";
+            bool bInitialized = false;
             //let's grab our stuff from the registry
             try
             {
+                //bDebug = Registry.LocalMachine.OpenSubKey(sRegPath).GetValue(sRegDebug).ToString().ToLower().Equals("true");
                 bDebug = Registry.GetValue(sRegPath, sRegDebug, "false").ToString().ToLower().Equals("true");
+                sDebugMessage += "Got Debug Value";
+                sEmailTicketAddress = Registry.GetValue(sRegPath, sRegTicketAddress, "").ToString();
+                sDebugMessage += "Email Ticket Address: " + sEmailTicketAddress + "\n";
 
-                sEmailTicketAddress = Registry.GetValue(sRegPath, sRegTicketAddress, null).ToString();
-                debugMessage += "Email Ticket Address: " + sEmailTicketAddress + "\n";
+                sSpamSubmitAddress = Registry.GetValue(sRegPath, sRegSubmitAddress, "").ToString();
+                sDebugMessage += "Spam Submit Address: " + sSpamSubmitAddress + "\n";
 
-                sSpamSubmitAddress = Registry.GetValue(sRegPath, sRegSubmitAddress, null).ToString();
-                debugMessage += "Spam Submit Address: " + sSpamSubmitAddress + "\n";
+                sEncryptionPassword = Registry.GetValue(sRegPath, sRegEncryptionPassword, "").ToString();
+                sDebugMessage += "Encryption Password: " + sEncryptionPassword + "\n";
 
-                sEncryptionPassword = Registry.GetValue(sRegPath, sRegEncryptionPassword, null).ToString();
-                debugMessage += "Encryption Password: " + sEncryptionPassword + "\n";
+                bInitialized = true;
             }
             catch (System.Exception e)
             {
                 MessageBox.Show("The SPAM Submission plug in has failed to load.\n" +
-                    "Please contact support and tell them your reg keys need re-configuring\n",
+                    "Please contact support and tell them your reg keys need re-configuring.\n",
                     "Error",MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                bInitialized = false;
             }
             if (bDebug)
             {
-                MessageBox.Show(debugMessage, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(sDebugMessage, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            return true; 
+            return bInitialized;
         }
 
         private void blacklistSender(string sSenderEmailAddress)

@@ -10,6 +10,8 @@ using Office = Microsoft.Office.Core;
 //Added by Luke:
 using System.Windows.Forms;
 using Microsoft.Office.Interop.Outlook;
+using System.Drawing;
+using ContextSpamSubmission.Properties;
 
 // TODO:  Follow these steps to enable the Ribbon (XML) item:
 
@@ -89,14 +91,14 @@ namespace ContextSpamSubmission
             return null;
         }
 
-        //public Image GetIcon(Office.IRibbonControl control)
-        //{
-        //    return Resources.icon;
-        //}
+        public Image GetIcon(Office.IRibbonControl control)
+        {
+            return Resources.spam;
+        }
 
         public string GetSynchronisationLabel(Office.IRibbonControl control)
         {
-            return "Submit SPAM";
+            return "Submit as SPAM";
         }
 
         public void SubmitSpam(Office.IRibbonControl control)
