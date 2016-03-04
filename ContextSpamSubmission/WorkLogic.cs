@@ -135,8 +135,8 @@ namespace ContextSpamSubmission
                         spamMail.Subject = sGuid;
                         spamMail.Body = sMetadata;
                         spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + sGuid);
-                        //spamMail.Send();
-
+                        spamMail.Send();
+                        
                         //That's sent, let's delete the .zip on disk
                         File.Delete(badZipOnDisk);
 

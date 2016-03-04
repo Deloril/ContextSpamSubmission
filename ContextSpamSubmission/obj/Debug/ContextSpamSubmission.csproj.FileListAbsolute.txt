@@ -1,7 +1,3 @@
-C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.dll
-C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.pdb
-C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.dll.manifest
-C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.vsto
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\Ionic.Zip.dll
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\Microsoft.Office.Tools.Common.dll
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\Microsoft.Office.Tools.Common.v4.0.Utilities.dll
@@ -19,5 +15,9 @@ C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\D
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\obj\Debug\ContextSpamSubmission.csprojResolveAssemblyReference.cache
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\obj\Debug\ContextSpamSubmission.Properties.Resources.resources
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\obj\Debug\ContextSpamSubmission.csproj.GenerateResource.Cache
+C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.dll
+C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.pdb
+C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.dll.manifest
+C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\bin\Debug\ContextSpamSubmission.vsto
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\obj\Debug\ContextSpamSubmission.dll
 C:\Users\lpearson\Source\Repos\ContextSpamSubmission\ContextSpamSubmission\obj\Debug\ContextSpamSubmission.pdb

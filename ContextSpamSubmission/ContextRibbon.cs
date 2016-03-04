@@ -45,7 +45,7 @@ namespace ContextSpamSubmission
             //initialize workLogic at the outlook start up
             if (!wl.initialize())
             {
-                //Hide the add in somehow XXX
+                //turn it off somehow
             }
         }
 
