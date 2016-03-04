@@ -14,47 +14,50 @@ namespace ContextSpamSubmission
 {
     class WorkLogic
     {
-        const string PR_ATTACH_DATA_BIN = "http://schemas.microsoft.com/mapi/proptag/0x37010102";
+        const string PR_MAIL_HEADER_TAG = @"http://schemas.microsoft.com/mapi/proptag/0x007D001E";
+        const string PR_ATTACH_DATA_BIN = @"http://schemas.microsoft.com/mapi/proptag/0x37010102";
         //variable declarations XXX
         //the registry hive containing our address keys.
-        string regPath = "HKEY_CURRENT_USER\\SOFTWARE\\InverseSoftware\\SpamSubmission\\";
+        string sRegPath = "HKEY_CURRENT_USER\\SOFTWARE\\InverseSoftware\\SpamSubmission\\";
         //the key containing the ticket 'voicemail' address. Emailing this address should result in
         //a ticket being created, with a reference to the SPAM sample.
-        string regTicketAddress = "ticketEmail";
+        string sRegTicketAddress = "ticketEmail";
         //the key containing the address we submit the SPAM sample to.
-        string regSubmitAddress = "spamEmail";
+        string sRegSubmitAddress = "spamEmail";
         //key that holds the zip password
-        string regEncryptionPassword = "encryptionPassword";
-        //string to store the registry key holding the debug value
-        string regDebug = "debug";
+        string sRegEncryptionPassword = "encryptionPassword";
+        //string to store the registry key holding the Debug value
+        string sRegDebug = "debug";
         //key to hold the ticket voicemail address, once we get it.
-        string emailTicketAddress = "";
+        string sEmailTicketAddress = "";
         //key to hold the SPAM submission address, once we get it.
-        string spamSubmitAddress = "";
+        string sSpamSubmitAddress = "";
         //string to store encryption password
-        string encryptionPassword = "";
+        string sEncryptionPassword = "";
         //A string to hold the interesting items we want to report on in plaintext
-        string metadata = "";
-        //A string to hold the unique identifier of each message
-        string uid = "";
+        string sMetadata = "";
         //boolean value (stored in reg) dictating wether or not we should show debugging messages
-        bool debug = false;
+        bool bDebug = false;
         //an Outlook Rules Array to store all the current outlook rules.
         Rules olRuleList = null;
         //Single Rule instance
         Rule olRule = null;
         //A string for the rule name we will use. Registry?
         string olRuleName = "SPAMAutoDeleteList";
+        //Boolean value for existence of SPAM Rule in outlook
+        bool bSpamRuleExists = false;
 
         
         
         public void submit()
         {
+            //get our reference to the application for future use.
             Microsoft.Office.Interop.Outlook.Application outlookApp = Globals.ThisAddIn.Application;
-            //submission zip password
 
             //Main logic, majority of program logic is below, in this method.
             Explorer explorer = Globals.ThisAddIn.Application.ActiveExplorer();
+
+            //this checks something, and is probably important. Copy Paste form the interwebs.
             if (explorer != null && explorer.Selection != null && explorer.Selection.Count > 0)
             {
                 //item = variable storing what was right clicked on.
@@ -62,42 +65,41 @@ namespace ContextSpamSubmission
                 //if the item selected is a mail item, we know the user has done it right, let's proceed.
                 if (item is MailItem)
                 {
+                    //store badmail for future use
                     MailItem badMail = item as MailItem;
                     if (badMail != null)
                     {
-                        //set the uid of this message
-                        //after much deliberation, we'll initialize rand here,
-                        //as it gives us the greatest chance of a non duplicated random number
-                        string uid = Guid.NewGuid().ToString();
-                        string strHeaders = "";
+                        //set the guid of this message
+                        string sGuid = Guid.NewGuid().ToString();
+                        string sHeaders = "";
                         PropertyAccessor oPA = badMail.PropertyAccessor as PropertyAccessor;
-                        const string PR_MAIL_HEADER_TAG = @"http://schemas.microsoft.com/mapi/proptag/0x007D001E";
+                        
                         try
                         {
-                            strHeaders = (string)oPA.GetProperty(PR_MAIL_HEADER_TAG);
+                            sHeaders = (string)oPA.GetProperty(PR_MAIL_HEADER_TAG);
                         }
-                        catch { }
+                        catch(System.Exception e) { Console.WriteLine(e); }
 
                         //This will pull out the headers and such, and whack them into variables.
-                        metadata = "To: " +  badMail.To + "\r\n";
-                        metadata += "From: " +  badMail.SenderName + ": " + badMail.SenderEmailAddress + "\r\n";
-                        metadata += "Subject: " + badMail.Subject + "\r\n";
-                        metadata += "CC: " + badMail.CC + "\n\r";
-                        metadata += "Companies Associated With Email: " + badMail.Companies + "\r\n";
-                        metadata += "Email Creation Time: " + badMail.CreationTime + "\r\n";
-                        metadata += "Delivery Report Requested: " +badMail.OriginatorDeliveryReportRequested + "\r\n";
-                        metadata += "Received Time: " + badMail.ReceivedTime + "\r\n";
-                        metadata += "Sent On: " + badMail.SentOn.ToString() + "\r\n";
-                        metadata += "Size (kb): " + ((badMail.Size)/1024).ToString() + "\r\n";
-                        metadata += "Headers: \r\n" + strHeaders + "\r\n";
-                        metadata += "Plaintext Body: \r\n" + badMail.Body + "\r\n";
+                        sMetadata = "To: " +  badMail.To + "\r\n";
+                        sMetadata += "From: " +  badMail.SenderName + ": " + badMail.SenderEmailAddress + "\r\n";
+                        sMetadata += "Subject: " + badMail.Subject + "\r\n";
+                        sMetadata += "CC: " + badMail.CC + "\n\r";
+                        sMetadata += "Companies Associated With Email: " + badMail.Companies + "\r\n";
+                        sMetadata += "Email Creation Time: " + badMail.CreationTime + "\r\n";
+                        sMetadata += "Delivery Report Requested: " +badMail.OriginatorDeliveryReportRequested + "\r\n";
+                        sMetadata += "Received Time: " + badMail.ReceivedTime + "\r\n";
+                        sMetadata += "Sent On: " + badMail.SentOn.ToString() + "\r\n";
+                        sMetadata += "Size (kb): " + ((badMail.Size)/1024).ToString() + "\r\n";
+                        sMetadata += "Headers: \r\n" + sHeaders + "\r\n";
+                        sMetadata += "Plaintext Body: \r\n" + badMail.Body + "\r\n";
 
                         //This will create a mail item, and send it to the designated mailbox of a ticketing system.
-                        Microsoft.Office.Interop.Outlook.MailItem ticketMail = (Microsoft.Office.Interop.Outlook.MailItem) outlookApp.CreateItem(Microsoft.Office.Interop.Outlook.OlItemType.olMailItem);
-                        ticketMail.To = emailTicketAddress;
-                        ticketMail.Subject = uid;
-                        ticketMail.Body = metadata;
-                        //ticketMail.Send();
+                        MailItem ticketMail = (MailItem) outlookApp.CreateItem(OlItemType.olMailItem);
+                        ticketMail.To = sEmailTicketAddress;
+                        ticketMail.Subject = sGuid;
+                        ticketMail.Body = sMetadata;
+                        ticketMail.Send();
 
 
                         //Save the badmail to disk, to then read back in in a compressed stream.
@@ -108,8 +110,8 @@ namespace ContextSpamSubmission
                         //The path specified by the USERPROFILE environment variable.
                         //The Windows directory.
                         string tempDir = Path.GetTempPath();
-                        string badOnDisk = tempDir + uid + ".msg";
-                        string badZipOnDisk = tempDir + uid + ".zip";
+                        string badOnDisk = tempDir + sGuid + ".msg";
+                        string badZipOnDisk = tempDir + sGuid + ".zip";
 
                         //Save it to disk
                         badMail.SaveAs(badOnDisk);
@@ -117,100 +119,53 @@ namespace ContextSpamSubmission
                         //Read in the email in the .zip format, with a password, write back to disk.
                         using (ZipFile zip = new ZipFile())
                         {
-                            zip.Password = encryptionPassword;
+                            zip.Password = sEncryptionPassword;
                             //the "." specifies the directory structure inside the zip - . just means
                             //insert the attachment at the root, instead of nested in a replication of
-                            //the systems %TMP% dir
+                            //the systems temp dir
                             zip.AddFile(badOnDisk, ".");
                             zip.Save(badZipOnDisk);
                         }
 
                         //Better get rid of the raw BadMail as soon as we're done with it
-
                         File.Delete(badOnDisk);
 
                         //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
                         MailItem spamMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
-                        spamMail.To = spamSubmitAddress;
-                        spamMail.Subject = uid;
-                        spamMail.Body = metadata;
-                        spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + uid);
-                        spamMail.Send();
+                        spamMail.To = sSpamSubmitAddress;
+                        spamMail.Subject = sGuid;
+                        spamMail.Body = sMetadata;
+                        spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + sGuid);
+                        //spamMail.Send();
 
                         //That's sent, let's delete the .zip on disk
                         File.Delete(badZipOnDisk);
 
-
-
-                        //Now, let's add the sender to the autodelete rule
-                        olRuleList = Globals.ThisAddIn.Application.Session.DefaultStore.GetRules();
-
-                        bool ruleExists = false;
-                        foreach (Rule rule in olRuleList)
+                        //if the listed email address doesn't contain an @, it's not a legit threat address, disregard blocking.
+                        if (badMail.SenderEmailAddress.Contains("@"))
                         {
-                            if (rule.Name.Equals(olRuleName))
+                            DialogResult blockSender = MessageBox.Show("Do you want to automatically delete future emails from:\n" + badMail.SenderEmailAddress, "Block Sender?", MessageBoxButtons.YesNo);
+                            if (blockSender == DialogResult.Yes)
                             {
-                                olRule = rule;
-                                ruleExists = true;
-                                break;
+                                blacklistSender(badMail.SenderEmailAddress);
                             }
                         }
-
-                        //if the rule doesn't exist, we create it. 
-                        if (!ruleExists)
-                        {
-                            olRule = olRuleList.Create(olRuleName, OlRuleType.olRuleReceive);
-                            olRule.Conditions.SenderAddress.Address = new string[] { "placeholder@ignoreme1337.ru" };
-                        }
-                        //then we check to see if the sender is in the bad list. If he's not,
-                        //we add him.
-                        bool inList = false;
-                        foreach (string s in olRule.Conditions.SenderAddress.Address)
-                        {
-                            if (s.Equals(badMail.SenderEmailAddress)){
-                                inList = true;
-                                break;
-                            }
-                        }
-                        if (!inList)
-                        {
-                            List<string> badAddressList = new List<string>();
-                            foreach (string s in olRule.Conditions.SenderAddress.Address)
-                            {
-                                badAddressList.Add(s);
-
-                            }
-                            badAddressList.Add(badMail.SenderEmailAddress);
-                            string[] badStrings = new string[badAddressList.Count];
-                            int i = 0;
-                            foreach (string s in badAddressList)
-                            {
-                                badStrings[i] = s;
-                                i++;
-                            }
-                            foreach(string s in badStrings)
-                            {
-                                MessageBox.Show(s);
-                            }
-                            olRule.Conditions.SenderAddress.Address = badStrings;
-                            olRule.Conditions.SenderAddress.Enabled = true;
-                        }
-                        olRule.Actions.DeletePermanently.Enabled = true;
-                        olRuleList.Save(true);
-
+                                               
                         //Finally, remove the dodgy email from outlook.
                         badMail.UnRead = false;
                         badMail.Save();
                         badMail.Delete();
 
-                        //testing message, can likely remove this later. XXX
-                        if (debug)
+                        //If we're debugging, let's show the success and contents.
+                        if (bDebug)
                         {
                             MessageBox.Show("You've submitted a SPAM sample.\r\n" +
-                                metadata, "Thanks", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                                sMetadata, "Thanks", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                     }
-                    //Not a mail item, need to decide how to handle this. Advise user they done goofed. XXX
+                    
+                    //Not a mail item, need to decide how to handle this. Advise user they done goofed.
+                    //Should never happen, theoretically.
                     else
                     {
                         MessageBox.Show("You've selected something that is not an email.\r\n" + 
@@ -224,21 +179,21 @@ namespace ContextSpamSubmission
        
         public bool initialize()
         {
-            //debug string for testing
+            //bDebug string for testing
             string debugMessage= "";
             //let's grab our stuff from the registry
             try
             {
-                debug = Registry.GetValue(regPath, regDebug, "false").ToString().ToLower().Equals("true");
+                bDebug = Registry.GetValue(sRegPath, sRegDebug, "false").ToString().ToLower().Equals("true");
 
-                emailTicketAddress = Registry.GetValue(regPath, regTicketAddress, null).ToString();
-                debugMessage += "Email Ticket Address: " + emailTicketAddress + "\n";
+                sEmailTicketAddress = Registry.GetValue(sRegPath, sRegTicketAddress, null).ToString();
+                debugMessage += "Email Ticket Address: " + sEmailTicketAddress + "\n";
 
-                spamSubmitAddress = Registry.GetValue(regPath, regSubmitAddress, null).ToString();
-                debugMessage += "Spam Submit Address: " + spamSubmitAddress + "\n";
+                sSpamSubmitAddress = Registry.GetValue(sRegPath, sRegSubmitAddress, null).ToString();
+                debugMessage += "Spam Submit Address: " + sSpamSubmitAddress + "\n";
 
-                encryptionPassword = Registry.GetValue(regPath, regEncryptionPassword, null).ToString();
-                debugMessage += "Encryption Password: " + encryptionPassword + "\n";
+                sEncryptionPassword = Registry.GetValue(sRegPath, sRegEncryptionPassword, null).ToString();
+                debugMessage += "Encryption Password: " + sEncryptionPassword + "\n";
             }
             catch (System.Exception e)
             {
@@ -247,8 +202,67 @@ namespace ContextSpamSubmission
                     "Error",MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
-            MessageBox.Show(debugMessage, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            if (bDebug)
+            {
+                MessageBox.Show(debugMessage, "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
             return true; 
+        }
+
+        private void blacklistSender(string sSenderEmailAddress)
+        {
+            //Now, let's add the sender to the autodelete rule
+            olRuleList = Globals.ThisAddIn.Application.Session.DefaultStore.GetRules();
+
+            foreach (Rule rule in olRuleList)
+            {
+                if (rule.Name.Equals(olRuleName))
+                {
+                    olRule = rule;
+                    bSpamRuleExists = true;
+                    break;
+                }
+            }
+
+            if (!bSpamRuleExists)
+            {
+                //confirm that it doesn't exist and this isn't just a first run setting
+                
+                //if the rule still doesn't exist, we create it. 
+                if (!bSpamRuleExists)
+                {
+                    olRule = olRuleList.Create(olRuleName, OlRuleType.olRuleReceive);
+                    olRule.Conditions.SenderAddress.Address = new string[] { "1@2.3" };
+                }
+            }
+
+            //then we check to see if the sender is in the bad list. If he's not,
+            //we add him.
+            bool bSenderInList = false;
+            foreach (string s in olRule.Conditions.SenderAddress.Address)
+            {
+                if (s.Equals(sSenderEmailAddress))
+                {
+                    bSenderInList = true;
+                    break;
+                }
+            }
+            if (!bSenderInList)
+            {
+                //new
+                string[] saBadAddresses = new string[olRule.Conditions.SenderAddress.Address.Length + 1];
+                int i = 0;
+                foreach (string s in olRule.Conditions.SenderAddress.Address)
+                {
+                    saBadAddresses[i] = s;
+                    i++;
+                }
+                saBadAddresses[i] = sSenderEmailAddress;
+                olRule.Conditions.SenderAddress.Address = saBadAddresses;
+                olRule.Conditions.SenderAddress.Enabled = true;
+            }
+            olRule.Actions.DeletePermanently.Enabled = true;
+            olRuleList.Save(true);
         }
     }
 }
