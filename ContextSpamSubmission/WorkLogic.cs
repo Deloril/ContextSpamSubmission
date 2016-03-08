@@ -201,7 +201,7 @@ namespace ContextSpamSubmission
             catch (System.Exception e)
             {
                 MessageBox.Show("The SPAM Submission plug in has failed to load.\n" +
-                    "Please contact support and tell them your reg keys need re-configuring.\n",
+                    "Please contact the Service Desk and tell them your reg keys need re-configuring.\n",
                     "Error",MessageBoxButtons.OK, MessageBoxIcon.Error);
                 bInitialized = false;
             }
@@ -215,57 +215,113 @@ namespace ContextSpamSubmission
         private void blacklistSender(string sSenderEmailAddress)
         {
             //Now, let's add the sender to the autodelete rule
-            olRuleList = Globals.ThisAddIn.Application.Session.DefaultStore.GetRules();
-
-            foreach (Rule rule in olRuleList)
+            try
             {
-                if (rule.Name.Equals(olRuleName))
+                olRuleList = Globals.ThisAddIn.Application.Session.DefaultStore.GetRules();
+
+                foreach (Rule rule in olRuleList)
                 {
-                    olRule = rule;
-                    bSpamRuleExists = true;
-                    break;
+                    if (rule.Name.Equals(olRuleName))
+                    {
+                        olRule = rule;
+                        bSpamRuleExists = true;
+                        break;
+                    }
                 }
             }
-
-            if (!bSpamRuleExists)
+            catch (System.Exception e)
             {
-                //confirm that it doesn't exist and this isn't just a first run setting
-                
-                //if the rule still doesn't exist, we create it. 
+                if (bDebug)
+                {
+                    MessageBox.Show("Exception getting existing Outlook Rules: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                }
+            }
+            
+            try
+            {
                 if (!bSpamRuleExists)
                 {
-                    olRule = olRuleList.Create(olRuleName, OlRuleType.olRuleReceive);
-                    olRule.Conditions.SenderAddress.Address = new string[] { "1@2.3" };
+                    //confirm that it doesn't exist and this isn't just a first run setting
+                    //if the rule still doesn't exist, we create it. 
+                    if (!bSpamRuleExists)
+                    {
+                        olRule = olRuleList.Create(olRuleName, OlRuleType.olRuleReceive);
+                        olRule.Conditions.SenderAddress.Address = new string[] { "1@2.3" };
+                    }
                 }
             }
+            catch (System.Exception e)
+            {
+                if (bDebug)
+                {
+                    MessageBox.Show("Exception creating SPAM rule: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                }
+            }
+            
 
             //then we check to see if the sender is in the bad list. If he's not,
             //we add him.
             bool bSenderInList = false;
-            foreach (string s in olRule.Conditions.SenderAddress.Address)
+            try
             {
-                if (s.Equals(sSenderEmailAddress))
-                {
-                    bSenderInList = true;
-                    break;
-                }
-            }
-            if (!bSenderInList)
-            {
-                //new
-                string[] saBadAddresses = new string[olRule.Conditions.SenderAddress.Address.Length + 1];
-                int i = 0;
                 foreach (string s in olRule.Conditions.SenderAddress.Address)
                 {
-                    saBadAddresses[i] = s;
-                    i++;
+                    if (s.Equals(sSenderEmailAddress))
+                    {
+                        bSenderInList = true;
+                        break;
+                    }
                 }
-                saBadAddresses[i] = sSenderEmailAddress;
-                olRule.Conditions.SenderAddress.Address = saBadAddresses;
-                olRule.Conditions.SenderAddress.Enabled = true;
             }
-            olRule.Actions.DeletePermanently.Enabled = true;
-            olRuleList.Save(true);
+            catch (System.Exception e)
+            {
+                if (bDebug)
+                {
+                    MessageBox.Show("Exception iterating through current rules: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                }
+            }
+
+            if (!bSenderInList)
+            {
+                try
+                {
+                    string[] saBadAddresses = new string[olRule.Conditions.SenderAddress.Address.Length + 1];
+                    int i = 0;
+                    foreach (string s in olRule.Conditions.SenderAddress.Address)
+                    {
+                        saBadAddresses[i] = s;
+                        i++;
+                    }
+                    saBadAddresses[i] = sSenderEmailAddress;
+                    olRule.Conditions.SenderAddress.Address = saBadAddresses;
+                    olRule.Conditions.SenderAddress.Enabled = true;
+                } 
+                catch (System.Exception e)
+                {
+                    if (bDebug)
+                    {
+                        MessageBox.Show("Exception adding the address to the blacklist:\n\n" + e,
+                            "Error", MessageBoxButtons.OK);
+                    }
+                }
+            }
+
+            try
+            {
+                olRule.Actions.DeletePermanently.Enabled = true;
+                olRuleList.Save(true);
+            }
+            catch (System.Exception e)
+            {
+                if (bDebug)
+                {
+                    MessageBox.Show("Exception setting permanent delete or saving the revised blacklist:\n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                }
+            }
         }
     }
 }
