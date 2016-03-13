@@ -55,10 +55,12 @@ namespace ContextSpamSubmission
             //Main logic, majority of program logic is below, in this method.
             Explorer explorer = Globals.ThisAddIn.Application.ActiveExplorer();
 
-            //this checks something, and is probably important. Copy Paste form the interwebs.
+            //this checks something, and is probably important. Copy Paste from the interwebs.
+            //Looks like it double checks that something has been right clicked and passed to the application
             if (explorer != null && explorer.Selection != null && explorer.Selection.Count > 0)
             {
                 //item = variable storing what was right clicked on.
+                //why we use 1 instead of 0 is unknown
                 object item = explorer.Selection[1];
                 //if the item selected is a mail item, we know the user has done it right, let's proceed.
                 if (item is MailItem)
@@ -71,74 +73,110 @@ namespace ContextSpamSubmission
                         string sGuid = Guid.NewGuid().ToString();
                         string sHeaders = "";
                         PropertyAccessor oPA = badMail.PropertyAccessor as PropertyAccessor;
-                        
+
                         try
                         {
                             sHeaders = (string)oPA.GetProperty(PR_MAIL_HEADER_TAG);
                         }
-                        catch(System.Exception e) { Console.WriteLine(e); }
+                        catch (System.Exception e)
+                        {
+                            if (bDebug)
+                            {
+                                MessageBox.Show("Exception getting mail headers: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                            }
+                        }
 
                         //This will pull out the headers and such, and whack them into variables.
-                        sMetadata = "To: " +  badMail.To + "\r\n";
-                        sMetadata += "From: " +  badMail.SenderName + ": " + badMail.SenderEmailAddress + "\r\n";
-                        sMetadata += "Subject: " + badMail.Subject + "\r\n";
-                        sMetadata += "CC: " + badMail.CC + "\n\r";
-                        sMetadata += "Companies Associated With Email: " + badMail.Companies + "\r\n";
-                        sMetadata += "Email Creation Time: " + badMail.CreationTime + "\r\n";
-                        sMetadata += "Delivery Report Requested: " +badMail.OriginatorDeliveryReportRequested + "\r\n";
-                        sMetadata += "Received Time: " + badMail.ReceivedTime + "\r\n";
-                        sMetadata += "Sent On: " + badMail.SentOn.ToString() + "\r\n";
-                        sMetadata += "Size (kb): " + ((badMail.Size)/1024).ToString() + "\r\n";
-                        sMetadata += "Headers: \r\n" + sHeaders + "\r\n";
-                        sMetadata += "Plaintext Body: \r\n" + badMail.Body + "\r\n";
+                        try
+                        {
+                            sMetadata = "To: " + badMail.To + "\r\n";
+                            sMetadata += "From: " + badMail.SenderName + ": " + badMail.SenderEmailAddress + "\r\n";
+                            sMetadata += "Subject: " + badMail.Subject + "\r\n";
+                            sMetadata += "CC: " + badMail.CC + "\n\r";
+                            sMetadata += "Companies Associated With Email: " + badMail.Companies + "\r\n";
+                            sMetadata += "Email Creation Time: " + badMail.CreationTime + "\r\n";
+                            sMetadata += "Delivery Report Requested: " + badMail.OriginatorDeliveryReportRequested + "\r\n";
+                            sMetadata += "Received Time: " + badMail.ReceivedTime + "\r\n";
+                            sMetadata += "Sent On: " + badMail.SentOn.ToString() + "\r\n";
+                            sMetadata += "Size (kb): " + ((badMail.Size) / 1024).ToString() + "\r\n";
+                            sMetadata += "Headers: \r\n" + sHeaders + "\r\n";
+                            sMetadata += "Plaintext Body: \r\n" + badMail.Body + "\r\n";
+                        }
+                        catch(System.Exception e)
+                        {
+                            MessageBox.Show("Exception extracting metadata: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                        }
+
 
                         //This will create a mail item, and send it to the designated mailbox of a ticketing system.
-                        MailItem ticketMail = (MailItem) outlookApp.CreateItem(OlItemType.olMailItem);
-                        ticketMail.To = sEmailTicketAddress;
-                        ticketMail.Subject = sGuid;
-                        ticketMail.Body = sMetadata;
-                        ticketMail.Send();
+                        try
+                        {
+                            MailItem ticketMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
+                            ticketMail.To = sEmailTicketAddress;
+                            ticketMail.Subject = sGuid;
+                            ticketMail.Body = sMetadata;
+                            ticketMail.Send();
+                        }
+                        catch(System.Exception e)
+                        {
+                            MessageBox.Show("Exception sending ticket email: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                        }
 
                         /*
                         *   Save the badmail to disk, to then read back in in a compressed stream.
+                        *   Then, email it to the submission email address, with the bad mail attached.
                         */
-
-                        //First, get temp path(checks the below in order):
-                        //The path specified by the TMP environment variable.
-                        //The path specified by the TEMP environment variable.
-                        //The path specified by the USERPROFILE environment variable.
-                        //The Windows directory.
-                        string tempDir = Path.GetTempPath();
-                        string badOnDisk = tempDir + sGuid + ".msg";
-                        string badZipOnDisk = tempDir + sGuid + ".zip";
-
-                        //Save it to disk
-                        badMail.SaveAs(badOnDisk);
-
-                        //Read in the email in the .zip format, with a password, write back to disk.
-                        using (ZipFile zip = new ZipFile())
+                        try
                         {
-                            zip.Password = sEncryptionPassword;
-                            //the "." specifies the directory structure inside the zip - . just means
-                            //insert the attachment at the root, instead of nested in a replication of
-                            //the systems temp dir
-                            zip.AddFile(badOnDisk, ".");
-                            zip.Save(badZipOnDisk);
+                            //First, get temp path(checks the below in order):
+                            //The path specified by the TMP environment variable.
+                            //The path specified by the TEMP environment variable.
+                            //The path specified by the USERPROFILE environment variable.
+                            //The Windows directory.
+                            string tempDir = Path.GetTempPath();
+                            string badOnDisk = tempDir + sGuid + ".msg";
+                            string badZipOnDisk = tempDir + sGuid + ".zip";
+
+                            //Save it to disk
+                            badMail.SaveAs(badOnDisk);
+
+                            //Read in the email in the .zip format, with a password, write back to disk.
+                            using (ZipFile zip = new ZipFile())
+                            {
+                                zip.Password = sEncryptionPassword;
+                                //the "." specifies the directory structure inside the zip - . just means
+                                //insert the attachment at the root, instead of nested in a replication of
+                                //the systems temp dir
+                                zip.AddFile(badOnDisk, ".");
+                                zip.Save(badZipOnDisk);
+                            }
+
+                            //Better get rid of the raw BadMail as soon as we're done with it
+                            File.Delete(badOnDisk);
+
+                            //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
+                            MailItem spamMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
+                            spamMail.To = sSpamSubmitAddress;
+                            spamMail.Subject = sGuid;
+                            spamMail.Body = sMetadata;
+                            spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + sGuid);
+                            spamMail.Send();
+
+                            //That's sent, let's delete the .zip on disk
+                            File.Delete(badZipOnDisk);
                         }
-
-                        //Better get rid of the raw BadMail as soon as we're done with it
-                        File.Delete(badOnDisk);
-
-                        //This will create a mail item, and send it to a sample collection mailbox, with the badSample attached.
-                        MailItem spamMail = (MailItem)outlookApp.CreateItem(OlItemType.olMailItem);
-                        spamMail.To = sSpamSubmitAddress;
-                        spamMail.Subject = sGuid;
-                        spamMail.Body = sMetadata;
-                        spamMail.Attachments.Add(badZipOnDisk, OlAttachmentType.olByValue, 1, "SPAM Sample " + sGuid);
-                        spamMail.Send();
+                        catch(System.Exception e)
+                        {
+                            MessageBox.Show("Exception somewhere in the emailing of the SPAM submission.\n" + 
+                                " Most likely cause here is that AV picked up the bad mail on disk.\n" + 
+                                "Exception:\n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                        }
                         
-                        //That's sent, let's delete the .zip on disk
-                        File.Delete(badZipOnDisk);
+                        
 
                         //if the listed email address doesn't contain an @, it's not a legit threat address, disregard blocking.
                         if (badMail.SenderEmailAddress.Contains("@"))
@@ -149,11 +187,19 @@ namespace ContextSpamSubmission
                                 blacklistSender(badMail.SenderEmailAddress);
                             }
                         }
-                                               
+
                         //Finally, remove the dodgy email from outlook.
-                        badMail.UnRead = false;
-                        badMail.Save();
-                        badMail.Delete();
+                        try
+                        {
+                            badMail.UnRead = false;
+                            badMail.Save();
+                            badMail.Delete();
+                        } catch (System.Exception e)
+                        {
+                            MessageBox.Show("Exception deleting SPAM email: \n\n" + e,
+                        "Error", MessageBoxButtons.OK);
+                        }
+
 
                         //If we're debugging, let's show the success and contents.
                         if (bDebug)
