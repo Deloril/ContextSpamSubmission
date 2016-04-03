@@ -45,7 +45,7 @@ namespace ContextSpamSubmission
             //initialize workLogic at the outlook start up
             if (!wl.initialize())
             {
-                //turn it off somehow
+                this.ribbon.Invalidate();
             }
         }
 
@@ -106,7 +106,7 @@ namespace ContextSpamSubmission
             //call our custom submission logic.
             wl.submit();
         }
-        
+
         #endregion
     }
 }

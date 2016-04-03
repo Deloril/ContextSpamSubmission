@@ -60,7 +60,7 @@ namespace ContextSpamSubmission
             if (explorer != null && explorer.Selection != null && explorer.Selection.Count > 0)
             {
                 //item = variable storing what was right clicked on.
-                //why we use 1 instead of 0 is unknown
+                //why we use 1 instead of 0 is unknown, but it works
                 object item = explorer.Selection[1];
                 //if the item selected is a mail item, we know the user has done it right, let's proceed.
                 if (item is MailItem)
@@ -87,7 +87,7 @@ namespace ContextSpamSubmission
                             }
                         }
 
-                        //This will pull out the headers and such, and whack them into variables.
+                        //This will pull out the headers and such, and whacks them into a string.
                         try
                         {
                             sMetadata = "To: " + badMail.To + "\r\n";
@@ -170,10 +170,13 @@ namespace ContextSpamSubmission
                         }
                         catch(System.Exception e)
                         {
-                            MessageBox.Show("Exception somewhere in the emailing of the SPAM submission.\n" + 
-                                " Most likely cause here is that AV picked up the bad mail on disk.\n" + 
+                            if (bDebug)
+                            {
+                                MessageBox.Show("Exception somewhere in the emailing of the SPAM submission.\n" +
+                                " Most likely cause here is that AV picked up the bad mail on disk.\n" +
                                 "Exception:\n\n" + e,
-                        "Error", MessageBoxButtons.OK);
+                                "Error", MessageBoxButtons.OK);
+                            }
                         }
                         
                         
@@ -181,7 +184,8 @@ namespace ContextSpamSubmission
                         //if the listed email address doesn't contain an @, it's not a legit threat address, disregard blocking.
                         if (badMail.SenderEmailAddress.Contains("@"))
                         {
-                            DialogResult blockSender = MessageBox.Show("Do you want to automatically delete future emails from:\n" + badMail.SenderEmailAddress, "Block Sender?", MessageBoxButtons.YesNo);
+                            DialogResult blockSender = MessageBox.Show("Do you want to automatically delete future emails from:\n" + badMail.SenderEmailAddress, 
+                                "Block Sender?", MessageBoxButtons.YesNo);
                             if (blockSender == DialogResult.Yes)
                             {
                                 blacklistSender(badMail.SenderEmailAddress);
